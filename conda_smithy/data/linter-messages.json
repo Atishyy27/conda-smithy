@@ -875,6 +875,20 @@
       "path": "recipe/(meta|recipe).yaml"
     },
     {
+      "name": "RecipeNotLoadable",
+      "identifier": "R-054",
+      "category": "R",
+      "kind": "lint",
+      "added_in": "2026.10",
+      "deprecated_in": "",
+      "documentation": "The recipe file could not be loaded at all.\n\nEvery other lint works on the loaded recipe, so when the load fails there\nis nothing to lint and the recipe gets no feedback beyond this message.\nThat is usually a YAML syntax problem: a tab used for indentation, a line\nindented further than the one that opened the block, or a colon inside an\nunquoted value. The parser error quoted in the message gives the line and\ncolumn where it stopped.\n\nFix that line and the rest of the linting will run.",
+      "message": "The recipe could not be loaded, so no other lint could run on it. The parser stopped with: ${error}",
+      "examples": [
+        "The recipe could not be loaded, so no other lint could run on it. The parser stopped with: while scanning for the next token, found character '\\t' that cannot start any token, in \"<unicode string>\", line 12, column 1"
+      ],
+      "path": "recipe/(meta|recipe).yaml"
+    },
+    {
       "name": "FormattedSelectors",
       "identifier": "R0-001",
       "category": "R0",

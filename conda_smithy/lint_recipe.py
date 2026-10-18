@@ -151,6 +151,12 @@ def _get_recipe_config_keys(recipe_dir: Optional[str] = None) -> dict:
     return recipe_config_keys
 
 
+def _format_load_error(err: Exception) -> str:
+    # ruamel's errors are several lines with a caret under the offending column.
+    # Collapse the whitespace so the message stays one line in a PR comment.
+    return " ".join(str(err).split())
+
+
 def lintify_forge_yaml(recipe_dir: Optional[str] = None) -> (list, list):
     feedstock_config_keys = _get_feedstock_config(recipe_dir)
     # This is where we validate against the jsonschema and execute our custom validators.
@@ -1021,18 +1027,26 @@ def main(recipe_dir, conda_forge=False, return_hints=False, feedstock_dir=None):
     if not os.path.exists(recipe_file):
         raise OSError(f"No recipe file found in {recipe_dir}")
 
-    if build_tool == CONDA_BUILD_TOOL:
-        with open(recipe_file, encoding="utf-8") as fh:
-            content = render_meta_yaml("".join(fh))
-            meta = get_yaml().load(content)
-    else:
-        # we have to preserve the string quoting information for properly
-        # rendering the context section of the recipe
-        yl = get_yaml(preserve_quotes=True)
-        with open(recipe_file, encoding="utf-8") as fp:
-            meta = yl.load(fp.read())
-
     recipe_version = 1 if build_tool == RATTLER_BUILD_TOOL else 0
+
+    with open(recipe_file, encoding="utf-8") as fh:
+        recipe_text = fh.read()
+
+    try:
+        if build_tool == CONDA_BUILD_TOOL:
+            meta = get_yaml().load(render_meta_yaml(recipe_text))
+        else:
+            # we have to preserve the string quoting information for properly
+            # rendering the context section of the recipe
+            meta = get_yaml(preserve_quotes=True).load(recipe_text)
+    except Exception as err:
+        # Raising here loses every lint for the recipe: conda-forge-webservices
+        # catches it and posts one message saying the recipe could not be linted,
+        # with nothing about why. Lint it instead, and quote the parser error so
+        # the author gets the line that stopped it.
+        LOGGER.warning("Could not load %s: %s", recipe_file, repr(err), exc_info=err)
+        lints = [msg.r.RecipeNotLoadable(error=_format_load_error(err)).as_string()]
+        return (lints, []) if return_hints else lints
 
     # this call to lint the confa-forge.yml has to come before the
     # actual recipe linter is called

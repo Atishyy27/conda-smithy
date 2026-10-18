@@ -1177,6 +1177,43 @@ class Abi3MissingAbi3Audit(LinterMessage, _AnyRecipeMessage):
     )
 
 
+@dataclass(kw_only=True)
+class RecipeNotLoadable(LinterMessage, _AnyRecipeMessage):
+    """
+    The recipe file could not be loaded at all.
+
+    Every other lint works on the loaded recipe, so when the load fails there
+    is nothing to lint and the recipe gets no feedback beyond this message.
+    That is usually a YAML syntax problem: a tab used for indentation, a line
+    indented further than the one that opened the block, or a colon inside an
+    unquoted value. The parser error quoted in the message gives the line and
+    column where it stopped.
+
+    Fix that line and the rest of the linting will run.
+    """
+
+    kind = "lint"
+    identifier = "R-054"
+    added_in = "2026.10"
+    message = (
+        "The recipe could not be loaded, so no other lint could run on it. "
+        "The parser stopped with: ${error}"
+    )
+    error: str
+
+    @classmethod
+    def examples(cls):
+        return [
+            cls(
+                error=(
+                    "while scanning for the next token, found character "
+                    "'\\t' that cannot start any token, in \"<unicode string>\", "
+                    "line 12, column 1"
+                )
+            )
+        ]
+
+
 # endregion
 # region Recipe v0
 

@@ -4177,6 +4177,31 @@ def test_lint_recipe_parses_ok():
         ), hints
 
 
+def test_lint_recipe_that_cannot_be_loaded():
+    """A recipe the loader cannot read must lint, not raise.
+
+    Every lint below the load needs the recipe as a data structure, so a raise
+    here costs the author every lint for the recipe. conda-forge-webservices
+    catches it and posts one message saying the recipe could not be linted,
+    which does not say which line is wrong.
+    """
+    # A tab for indentation. YAML forbids it outright.
+    broken = 'package:\n\tname: foo\n'
+    for fname in ("meta.yaml", "recipe.yaml"):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with open(os.path.join(tmpdir, fname), "w") as f:
+                f.write(broken)
+            lints, hints = linter.main(tmpdir, return_hints=True, conda_forge=True)
+            assert len(lints) == 1, (fname, lints)
+            assert lints[0].startswith("The recipe could not be loaded"), (
+                fname,
+                lints,
+            )
+            # the parser's own location has to survive into the message,
+            # otherwise the author still does not know what to fix
+            assert "line 2" in lints[0], (fname, lints)
+
+
 def test_lint_recipe_parses_forblock():
     with tempfile.TemporaryDirectory() as tmpdir:
         with open(os.path.join(tmpdir, "meta.yaml"), "w") as f:
